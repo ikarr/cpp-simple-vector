@@ -5,12 +5,14 @@ class ArrayPtr {
 public:
     ArrayPtr() = default;
 
-    explicit ArrayPtr(size_t size) {
-        size != 0 ? raw_ptr_ = new Type[size] : raw_ptr_ = nullptr;
+    explicit ArrayPtr(size_t size)
+        : raw_ptr_(size != 0 ? new Type[size] : nullptr)
+    {
     }
 
     explicit ArrayPtr(Type* raw_ptr) noexcept
-        : raw_ptr_(raw_ptr) {
+        : raw_ptr_(raw_ptr)
+    {
     }
 
     ArrayPtr(const ArrayPtr&) = delete;
@@ -28,9 +30,7 @@ public:
     ArrayPtr& operator=(ArrayPtr&&) = default;
 
     [[nodiscard]] Type* Release() noexcept {
-        Type* array_ptr = raw_ptr_;
-        raw_ptr_ = nullptr;
-        return array_ptr;
+        return std::exchange(raw_ptr_, nullptr);;
     }
 
     Type& operator[](size_t index) noexcept {
@@ -50,9 +50,7 @@ public:
     }
 
     void swap(ArrayPtr& other) noexcept {
-        Type* tmp_ptr = other.Get();
-        other.raw_ptr_ = this->Release();
-        raw_ptr_ = tmp_ptr;
+        std::swap(raw_ptr_, other.raw_ptr_);
     }
 
 private:

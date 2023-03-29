@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <stdexcept>
 #include <utility>
@@ -64,18 +65,19 @@ public:
     }
     
     SimpleVector(const SimpleVector& other)
+        : items_(other.size_)
+        , size_(other.size_)
+        , capacity_(other.capacity_)
     {
-        SimpleVector tmp(other.size_);
-        std::copy(other.begin(), other.end(), tmp.begin());
-        swap(tmp);
+        std::copy(other.begin(), other.end(), begin());
     }
 
     // конструктор перемещения
     SimpleVector(SimpleVector&& other)
         : items_(std::exchange(other.items_, ArrayPtr<Type> {}))
         , size_(std::exchange(other.size_, 0))
-        , capacity_(std::exchange(other.capacity_, 0))
     {
+        std::swap(capacity_, other.capacity_);
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
@@ -89,8 +91,7 @@ public:
     // перемещающий оператор присваивания
     SimpleVector& operator=(SimpleVector&& rhs) {
         if (*this != rhs) {
-            auto tmp(rhs);
-            swap(tmp);
+            swap(rhs);
         }
         return *this;
     }
@@ -107,6 +108,7 @@ public:
 
     // Вставляет значение value в позицию pos путём копирования
     Iterator Insert(ConstIterator pos, const Type& value) {
+        assert(pos >= cbegin() && pos <= cend());
         size_t index = std::distance(cbegin(), pos);
         if (size_ < capacity_) {
             std::copy_backward(pos, cend(), std::next(end()));
@@ -130,6 +132,7 @@ public:
     
     // Вставляет значение value в позицию pos путём перемещения
     Iterator Insert(Iterator pos, Type&& value) {
+        assert(pos >= begin() && pos <= end());
         size_t index = std::distance(begin(), pos);
         if (size_ < capacity_) {
             std::move_backward(pos, end(), std::next(end()));
@@ -152,12 +155,12 @@ public:
     }
 
     void PopBack() noexcept {
-        if (!IsEmpty()) {
-            --size_;
-        }
+        assert(!IsEmpty());
+        --size_;
     }
 
     Iterator Erase(ConstIterator pos) {
+        assert(pos >= cbegin() && pos <= cend());
         if (pos == end()) {
             return end();
         }
@@ -225,18 +228,15 @@ public:
         else if (new_size > size_ && new_size <= capacity_) {
             std::generate(end(), &items_[new_size], []() {
                 return Type{};
-            });
+                });
             size_ = new_size;
         }
         else if (new_size > capacity_) {
-            ArrayPtr<Type> new_items(new_size);
-            std::move(begin(), end(), &new_items[0]);
-            std::generate(&new_items[size_], &new_items[new_size], []() {
+            Reserve(std::max(capacity_ * 2, new_size));
+            std::generate(end(), &items_[new_size], []() {
                 return Type{};
-            });
-            items_.swap(new_items);
+                });
             size_ = new_size;
-            capacity_ = std::max(capacity_ * 2, new_size);
         }
     }
 
