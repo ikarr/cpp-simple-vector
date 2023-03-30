@@ -74,10 +74,8 @@ public:
 
     // конструктор перемещения
     SimpleVector(SimpleVector&& other)
-        : items_(std::exchange(other.items_, ArrayPtr<Type> {}))
-        , size_(std::exchange(other.size_, 0))
     {
-        std::swap(capacity_, other.capacity_);
+        swap(other);
     }
 
     SimpleVector& operator=(const SimpleVector& rhs) {
@@ -106,12 +104,12 @@ public:
         Insert(end(), std::move(value));
     }
 
-    // Вставляет значение value в позицию pos путём копирования
+        // Вставляет значение value в позицию pos путём копирования
     Iterator Insert(ConstIterator pos, const Type& value) {
         assert(pos >= cbegin() && pos <= cend());
         size_t index = std::distance(cbegin(), pos);
         if (size_ < capacity_) {
-            std::copy_backward(pos, cend(), std::next(end()));
+            std::move_backward(pos, cend(), std::next(end()));
             items_[index] = value;
             ++size_;
             return Iterator(pos);
@@ -160,7 +158,7 @@ public:
     }
 
     Iterator Erase(ConstIterator pos) {
-        assert(pos >= cbegin() && pos <= cend());
+        assert(pos >= cbegin() && pos < cend());
         if (pos == end()) {
             return end();
         }
@@ -222,22 +220,18 @@ public:
     }
 
     void Resize(size_t new_size) {
-        if (new_size <= size_) {
-            size_ = new_size;
-        }
-        else if (new_size > size_ && new_size <= capacity_) {
+        if (new_size > size_ && new_size <= capacity_) {
             std::generate(end(), &items_[new_size], []() {
                 return Type{};
                 });
-            size_ = new_size;
         }
         else if (new_size > capacity_) {
             Reserve(std::max(capacity_ * 2, new_size));
             std::generate(end(), &items_[new_size], []() {
                 return Type{};
                 });
-            size_ = new_size;
         }
+		size_ = new_size;
     }
 
     Iterator begin() noexcept {
